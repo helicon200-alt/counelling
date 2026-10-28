@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-serif: "Nanum Myeongjo", "AppleMyungjo", "Batang", Georgia, serif;
+  --color-navy-50: #f1f4fa;
+  --color-navy-100: #dfe6f3;
+  --color-navy-200: #bccbe6;
+  --color-navy-600: #2f4b85;
+  --color-navy-700: #243b6b;
+  --color-navy-800: #1b2d53;
+  --color-navy-900: #13213e;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-white text-slate-800 antialiased;
+  word-break: keep-all;
+}
+
+/* 공통 버튼·입력 스타일 */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-600 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-navy-700 text-white hover:bg-navy-800;
+  }
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
+  }
+  .input {
+    @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-navy-600 focus:ring-2 focus:ring-navy-100 focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+  .card {
+    @apply rounded-lg border border-slate-200 bg-white;
+  }
+}

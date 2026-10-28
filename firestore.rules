@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// 연구실 자료 & 토론 — Firestore 보안 규칙
+// ⚠ 아래 ADMIN_EMAIL_HERE 를 교수님 Google 계정 이메일로 바꾼 뒤 Firebase 콘솔에 붙여 넣으세요.
+//   (VITE_ADMIN_EMAIL 환경변수와 같은 값이어야 합니다. 소문자로 입력하세요.)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 공통 함수 ──
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == "ADMIN_EMAIL_HERE"
+        && request.auth.token.email_verified == true;
+    }
+
+    // 승인된 회원(member) 또는 관리자
+    function isMember() {
+      return isAdmin() || (
+        signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['member', 'admin']
+      );
+    }
+
+    // ── 회원 ──
+    match /users/{uid} {
+      // 본인 문서만 읽기 (관리자는 전체)
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+
+      // 첫 로그인 시 본인 문서 생성: 기본은 pending, 관리자 이메일만 admin 허용
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['displayName', 'email', 'photoURL', 'role', 'createdAt'])
+        && request.resource.data.email == request.auth.token.email
+        && (request.resource.data.role == 'pending'
+            || (request.resource.data.role == 'admin' && isAdmin()));
+
+      // role 변경(승인)은 관리자만
+      allow update: if isAdmin()
+        && request.resource.data.role in ['admin', 'member', 'pending'];
+
+      // 거절 시 문서 삭제는 관리자만
+      allow delete: if isAdmin();
+    }
+
+    // ── 자료 ──
+    match /materials/{materialId} {
+      allow read: if isMember();
+
+      allow create, update: if isAdmin()
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.type in ['research', 'lecture']
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 10;
+
+      allow delete: if isAdmin();
+
+      // ── 댓글 ──
+      match /comments/{commentId} {
+        allow read: if isMember();
+
+        allow create: if isMember()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.body is string
+          && request.resource.data.body.size() >= 1
+          && request.resource.data.body.size() <= 2000;
+
+        // 수정: 작성자 본인만, 작성자 정보는 바꿀 수 없음
+        allow update: if isMember()
+          && resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.body is string
+          && request.resource.data.body.size() >= 1
+          && request.resource.data.body.size() <= 2000;
+
+        // 삭제: 작성자 본인 또는 관리자
+        allow delete: if isAdmin()
+          || (isMember() && resource.data.authorUid == request.auth.uid);
+      }
+    }
+
+    // ── 그 외 모든 경로 거부 ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
